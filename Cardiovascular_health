@@ -1,0 +1,1212 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Supervised Learning: Classification Project
+
+# ### https://www.kaggle.com/datasets/mamta1999/cardiovascular-risk-data
+
+# The main objective of this analysis is to develop classifiers model focused on prediction and compare them to see which model is the best. The analysis aims to provide accurate predictions of the 10-year risk of future coronary heart disease (CHD) for patients based on their demographic, behavioral, and medical attributes. The business or stakeholders of this data, such as healthcare providers or researchers, can benefit from the analysis by identifying individuals at high risk of CHD and implementing preventive measures or personalized interventions.
+
+# ## Import Libraries/Data
+
+# In[265]:
+
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+import matplotlib.pyplot as plt
+from sklearn import linear_model
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split, learning_curve, GridSearchCV
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier, VotingClassifier
+from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import confusion_matrix
+from sklearn.kernel_approximation import Nystroem
+from sklearn.svm import SVC
+from sklearn.linear_model import SGDClassifier
+from sklearn import metrics
+from sklearn.model_selection import StratifiedShuffleSplit
+import imblearn
+from imblearn.over_sampling import SMOTE
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+from sklearn.tree import DecisionTreeClassifier 
+from sklearn.model_selection import train_test_split
+
+from sklearn.metrics import classification_report, confusion_matrix, mean_squared_error
+from sklearn.metrics import accuracy_score, f1_score, recall_score, make_scorer, roc_curve, roc_auc_score
+
+
+# In[190]:
+
+
+df = pd.read_csv('data_cardiovascular_risk.csv')
+
+
+# In[191]:
+
+
+df['sex'] = df['sex'].map({'M': 1, 'F': 0})
+
+
+# In[192]:
+
+
+df['is_smoking'] = df['is_smoking'].map({'YES': 1, 'NO': 0})
+
+
+# In[193]:
+
+
+df.info()
+
+
+# In[194]:
+
+
+df.describe(include = 'all').round(2)
+
+
+# In[195]:
+
+
+df.isnull().sum()
+
+
+# In[22]:
+
+
+#pie chart
+print(df.TenYearCHD.value_counts())
+plt.figure(figsize=(10,8)) 
+textprops = {'fontsize':13}
+plt.pie(df['TenYearCHD'].value_counts(), labels=['Not CHD(%)','CHD(%)'], startangle=60, autopct="%1.1f%%")
+plt.title('Ten Year CHD (%', fontsize=20)
+
+plt.show()
+
+
+# In[23]:
+
+
+# Histogram to visualize distribution of each column     
+df_visual_hist = df.hist(figsize = (10,10))
+
+
+# In[24]:
+
+
+categorical_var = [i for i in df.columns if df[i].nunique()<=4]
+for i in categorical_var:
+  plt.figure(figsize=(7,5))
+  p = sns.countplot(x=i, data = df)
+  plt.xlabel(i)
+  plt.title(i+' distribution')
+  for i in p.patches:
+    p.annotate(f'{i.get_height()}', (i.get_x() + i.get_width() / 2., i.get_height()), ha = 'center', va = 'center', xytext = (0, 10), textcoords = 'offset points')
+  plt.show()
+
+
+# In[25]:
+
+
+corr = df.corr()
+mask = np.zeros_like(corr)
+
+mask[np.triu_indices_from(mask)] = True
+
+with sns.axes_style("white"):
+    f, ax = plt.subplots(figsize=(18, 9))
+    ax = sns.heatmap(corr , mask=mask, vmin = -1,vmax=1, annot = True, cmap="YlGnBu")
+
+
+# In[26]:
+
+
+corr_feature_ranking = corr['TenYearCHD'].sort_values(ascending=False).to_frame()
+cm = sns.light_palette('r', as_cmap=True)
+style = corr_feature_ranking.style.background_gradient(cmap=cm)
+style
+
+
+# # Training/Testing Data Split
+
+# In[280]:
+
+
+X = df.drop(['TenYearCHD'], axis = 1)
+y = df['TenYearCHD']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+X_train.shape, X_test.shape, y_train.shape, y_test.shape
+
+
+# # Support Vector Machine
+
+# In[28]:
+
+
+#remove missing values
+newdf = df.dropna()
+newdf
+
+
+# In[29]:
+
+
+(newdf['TenYearCHD'] == 1).astype(int)
+
+
+# In[30]:
+
+
+# how each column is correlated with CHD
+y = (newdf['TenYearCHD'] == 1).astype(int)
+fields = list(newdf.columns[:-1])
+correlations = newdf[fields].corrwith(y)
+correlations.sort_values(inplace=True)
+correlations
+
+
+# In[31]:
+
+
+sns.set_context('talk')
+sns.set_style('white')
+
+
+# In[18]:
+
+
+#scatter plot
+sns.pairplot(newdf, hue='TenYearCHD')
+
+
+# In[32]:
+
+
+#correlation plot
+ax = correlations.plot(kind ='bar')
+ax.set(ylim=[-1,1], ylabel ='correlation')
+
+
+# In[33]:
+
+
+#get top 2 highest correlated features
+fields = correlations.map(abs).sort_values().iloc[-2:].index
+print(fields)
+X = newdf[fields]
+scaler = MinMaxScaler()
+X = scaler.fit_transform(X)
+X = pd.DataFrame(X, columns=['%s_scaled' % fld for fld in fields])
+print(X.columns)
+
+
+# ### Linear Decision Boundary for SVM
+
+# In[34]:
+
+
+#fit linear SVM classifier to X,y
+LSVC = LinearSVC()
+LSVC.fit(X, y)
+
+#pick 300 samples from x and get corresponding value of y
+X_color = X.sample(300, random_state=45)
+y_color = y.reset_index(drop=True).loc[X_color.index]
+y_color = y_color.map(lambda r: 'red' if r == 1 else 'blue')
+ax = plt.axes()
+ax.scatter(
+    X_color.iloc[:, 0], X_color.iloc[:, 1],
+    color=y_color, alpha=1)
+
+x_axis, y_axis = np.arange(0, 1.005, .005), np.arange(0, 1.005, .005)
+#grid from 0 to 1 by 0.005
+xx, yy = np.meshgrid(x_axis, y_axis)
+#convert grid to array
+xx_ravel = xx.ravel()
+yy_ravel = yy.ravel()
+X_grid = pd.DataFrame([xx_ravel, yy_ravel]).T
+y_grid_predictions = LSVC.predict(X_grid)
+y_grid_predictions = y_grid_predictions.reshape(xx.shape)
+ax.contourf(xx, yy, y_grid_predictions, cmap=plt.cm.autumn_r, alpha=.3)
+
+ax.set(
+    xlabel=fields[0],
+    ylabel=fields[1],
+    xlim=[0, 1],
+    ylim=[0, 1],
+    title='decision boundary for LinearSVC');
+
+
+# ### Gaussian Kernel
+
+# In[22]:
+
+
+#fit gaussian kernel SVC to see how decision boundary changes
+def plot_decision_boundary(estimator, X, y):
+    estimator.fit(X, y)
+    X_color = X.sample(300)
+    y_color = y.reset_index(drop=True).loc[X_color.index]
+    y_color = y_color.map(lambda r: 'red' if r == 1 else 'blue')
+    x_axis, y_axis = np.arange(0, 1, .005), np.arange(0, 1, .005)
+    xx, yy = np.meshgrid(x_axis, y_axis)
+    xx_ravel = xx.ravel()
+    yy_ravel = yy.ravel()
+    X_grid = pd.DataFrame([xx_ravel, yy_ravel]).T
+    y_grid_predictions = estimator.predict(X_grid)
+    y_grid_predictions = y_grid_predictions.reshape(xx.shape)
+
+    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.contourf(xx, yy, y_grid_predictions, cmap=plt.cm.autumn_r, alpha=.3)
+    ax.scatter(X_color.iloc[:, 0], X_color.iloc[:, 1], color=y_color, alpha=1)
+    ax.set(
+        xlabel=fields[0],
+        ylabel=fields[1],
+        title=str(estimator))
+
+
+# In[23]:
+
+
+gammas = [0.5, 5, 10, 15]
+for gamma in gammas:
+    SVC_Gaussian = SVC(kernel='rbf', gamma=gamma)
+    plot_decision_boundary(SVC_Gaussian, X, y)
+
+
+# In[24]:
+
+
+Cs = [.1, 1, 10]
+for C in Cs:
+    SVC_Gaussian = SVC(kernel='rbf', gamma=0.5, C=C)
+    plot_decision_boundary(SVC_Gaussian, X, y)
+
+
+# ## Error Metrics SVM
+
+# In[39]:
+
+
+svm_f1 = metrics.f1_score(y_test, svc_preds, average='weighted')
+svm_recall = metrics.recall_score(y_test, svc_preds, average='weighted')
+svm_acc = metrics.accuracy_score(y_test, svc_preds)
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' , svm_f1)
+print('Test Accuracy:' , svm_acc)
+print('Test Recall:' , svm_recall)
+
+
+# In[40]:
+
+
+cm = confusion_matrix(y_test, svc_preds)
+
+print("Confusion Matrix:")
+print(cm)
+
+
+# ## SMOTE SVM
+
+# In[299]:
+
+
+sm = SMOTE(random_state=42)
+X_train_smote, y_train_smote = sm.fit_resample(X_train, y_train)
+y_train_smote.value_counts()
+
+
+# In[322]:
+
+
+smote = SVC(random_state=101).fit(X_train_smote,y_train_smote)
+svm_preds = smote.predict(X_test)
+
+
+# In[323]:
+
+
+print('Test Accuracy:' , accuracy_score(y_test, svm_preds))
+print('Test F1:' , f1_score(y_test, smote_preds, average='weighted'))
+print('Test Recall:' , recall_score(y_test, smote_preds, average='weighted'))
+
+
+# In[302]:
+
+
+cm = confusion_matrix(y_test, smote_preds)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[303]:
+
+
+unique_predicted_labels, counts_predicted_labels = np.unique(smote_preds, return_counts=True)
+print("Predicted label distribution:")
+print(unique_predicted_labels)
+print(counts_predicted_labels)
+
+
+# In[304]:
+
+
+unique_true_labels, counts_true_labels = np.unique(y_test, return_counts=True)
+print("True label distribution:")
+print(unique_true_labels)
+print(counts_true_labels)
+
+
+# In[305]:
+
+
+print(classification_report(y_test, smote_preds))
+
+
+# ## SVM Cross Validation GridSearchCV
+
+# In[35]:
+
+
+y = df.TenYearCHD == 'red'
+X = df[df.columns[:-1]]
+
+kwargs = {'kernel': 'rbf'}
+svc = SVC(**kwargs)
+nystroem = Nystroem(**kwargs)
+sgd = SGDClassifier()
+
+
+# In[36]:
+
+
+X = newdf.drop('TenYearCHD', axis = 1)
+y = newdf['TenYearCHD']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 42)
+
+
+# In[37]:
+
+
+svc = SVC(random_state=101)
+accuracies = cross_val_score(svc,X_train,y_train,cv=10)
+svc.fit(X_train,y_train)
+svc_preds = svc.predict(X_test)
+print("Train Score:", np.mean(accuracies))
+print("Test Score:", svc.score(X_test,y_test))
+
+
+# In[38]:
+
+
+grid ={'gamma': [0.5,1,5,10],
+            'C': [0.1,1,10]
+              }
+svm = SVC ()
+svm_cv = GridSearchCV(svm, grid, cv = 5, n_jobs=50)
+svm_cv.fit(X_train,y_train)
+
+print("Best Parameters:",svm_cv.best_params_)
+print("Train Score:",svm_cv.best_score_)
+print("Test Score:",svm_cv.score(X_test,y_test))
+
+
+# In[318]:
+
+
+GSCV_svm_preds = LR.best_estimator_.predict(X_test)
+
+print('Test Accuracy:' , accuracy_score(y_test, GSCV_svm_preds))
+print('Test F1:' , f1_score(y_test, GSCV_svm_preds, average='weighted'))
+print('Test Recall:' , recall_score(y_test, GSCV_svm_preds, average='weighted'))
+
+
+# # Logistic Regression
+
+# In[48]:
+
+
+df.dtypes.value_counts()
+
+
+# In[49]:
+
+
+# Calculate the correlation values
+feature_cols = df.columns[:-1]
+corr_values = df[feature_cols].corr()
+corr_values
+
+
+# In[50]:
+
+
+# Calculate the correlation values
+feature_cols = df.columns[:-1]
+corr_values = df[feature_cols].corr()
+
+# Simplify by emptying all the data below the diagonal
+tril_index = np.tril_indices_from(corr_values)
+
+# Make the unused values NaNs
+for coord in zip(*tril_index):
+    corr_values.iloc[coord[0], coord[1]] = np.NaN
+    
+# Stack the data and convert to a data frame
+corr_values = (corr_values
+               .stack()
+               .to_frame()
+               .reset_index()
+               .rename(columns={'level_0':'feature1',
+                                'level_1':'feature2',
+                                0:'correlation'}))
+
+# Get the absolute values for sorting
+corr_values['abs_correlation'] = corr_values.correlation.abs()
+
+
+# In[51]:
+
+
+sns.set_context('talk')
+sns.set_style('white')
+
+ax = corr_values.abs_correlation.hist(bins=50, figsize=(12, 8))
+ax.set(xlabel='Absolute Correlation', ylabel='Frequency');
+
+
+# In[52]:
+
+
+corr_values.sort_values('correlation', ascending=False).query('abs_correlation>0.4')
+
+
+# ## Logisitic Regression Training/Testing
+
+# In[53]:
+
+
+logreg = LogisticRegression(multi_class='multinomial', random_state=42)
+logreg.fit(X_train, y_train)
+logreg_preds = logreg.predict(X_test)
+
+logreg_f1 = metrics.f1_score(y_test, logreg_preds, average='weighted')
+logreg_recall = metrics.recall_score(y_test, logreg_preds, average='weighted')
+logreg_acc = metrics.accuracy_score(y_test, logreg_preds)
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' , logreg_f1)
+print('Test Accuracy:' , logreg_acc)
+print('Test Recall:' , logreg_recall)
+
+
+# In[54]:
+
+
+cm = confusion_matrix(y_test, logreg_preds)
+print("Confusion Matrix:")
+print(cm)
+
+
+# ## SMOTE Logistic Regression
+
+# In[55]:
+
+
+sm = SMOTE(random_state=42)
+X_train_smote, y_train_smote = sm.fit_resample(X_train, y_train)
+y_train_smote.value_counts()
+
+
+# In[324]:
+
+
+smote = LogisticRegression(multi_class='multinomial', random_state = 42).fit(X_train_smote, y_train_smote)
+logreg_preds = smote.predict(X_test)
+
+
+# In[325]:
+
+
+print('Test Accuracy:' , accuracy_score(y_test, logreg_preds))
+print('Test F1:' , f1_score(y_test, smote_preds, average='weighted'))
+print('Test Recall:' , recall_score(y_test, smote_preds, average='weighted'))
+
+
+# In[326]:
+
+
+cm = confusion_matrix(y_test, logreg_preds)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[327]:
+
+
+unique_predicted_labels, counts_predicted_labels = np.unique(logreg_preds, return_counts=True)
+print("Predicted label distribution:")
+print(unique_predicted_labels)
+print(counts_predicted_labels)
+
+
+# In[328]:
+
+
+unique_true_labels, counts_true_labels = np.unique(y_test, return_counts=True)
+print("True label distribution:")
+print(unique_true_labels)
+print(counts_true_labels)
+
+
+# In[61]:
+
+
+print(classification_report(y_test, logreg_preds))
+
+
+# ## LR Cross Validation
+
+# In[71]:
+
+
+cv_method = StratifiedShuffleSplit(n_splits=5, test_size = 0.30, random_state=42)
+
+
+# In[72]:
+
+
+scores_lr = cross_val_score(logreg, X_train_smote, y_train_smote, cv=cv_method, scoring = 'accuracy')
+
+print(f'Scores(Cross Validation) for Logistic Regression model:\n{scores_lr}')
+print(f'CrossValMeans: {round(scores_lr.mean(), 3)}')
+print(f'CrossValStandard Deviation: {round(scores_lr.std(), 3)}')
+
+
+# ## Logisitic Regression GridSearchCV
+
+# In[73]:
+
+
+X = newdf.drop('TenYearCHD', axis = 1)
+y = newdf['TenYearCHD']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 42)
+
+
+# In[74]:
+
+
+lr = LogisticRegression(multi_class='multinomial', random_state = 42)
+accuracies = cross_val_score(lr,X_train,y_train,cv=10)
+lr.fit(X_train,y_train)
+logreg_preds = lr.predict(X_test)
+print("Train Score:", np.mean(accuracies))
+print("Test Score:", lr.score(X_test,y_test))
+
+
+# In[75]:
+
+
+grid ={'penalty':['l1', 'l2'],
+            'C': [0.1,1,10]
+              }
+estimator_cv = LogisticRegression(multi_class='multinomial', random_state = 42)
+
+LR = GridSearchCV(estimator=estimator_cv, param_grid=grid, cv=cv_method,verbose=1, n_jobs=-1)
+LR.fit(X_train,y_train)
+
+print("Best Parameters:",LR.best_params_)
+print("Train Score:",LR.best_score_)
+print("Test Score:",LR.score(X_test,y_test))
+print("Best Estimator", LR.best_estimator_)
+
+
+# In[330]:
+
+
+#Predicting Test Set
+GSCV_LR_preds = LR.best_estimator_.predict(X_test)
+
+print('Test Accuracy:' , accuracy_score(y_test, GSCV_LR_preds))
+print('Test F1:' , f1_score(y_test, GSCV_LR_preds, average='weighted'))
+print('Test Recall:' , recall_score(y_test, GSCV_LR_preds, average='weighted'))
+
+
+# In[331]:
+
+
+cm = confusion_matrix(y_test, GSCV_LR_preds)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[332]:
+
+
+print(classification_report(y_test, GSCV_LR_preds))
+
+
+# # Decision Trees
+
+# In[203]:
+
+
+feature_cols = [x for x in df.columns if x not in 'TenYearCHD']
+
+
+# In[204]:
+
+
+y_train.value_counts(normalize=True).sort_index()
+
+
+# In[205]:
+
+
+y_test.value_counts(normalize=True).sort_index()
+
+
+# ## Decision Tree Testing/Training
+
+# In[229]:
+
+
+newdf = df.fillna(0)
+newdf
+
+
+# In[284]:
+
+
+X = newdf.drop(['TenYearCHD'], axis = 1)
+y = newdf['TenYearCHD']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+X_train.shape, X_test.shape, y_train.shape, y_test.shape
+
+dt = DecisionTreeClassifier(random_state = 42)
+dt.fit(X_train, y_train)
+dt_preds = dt.predict(X_test)
+
+dt_f1 = metrics.f1_score(y_test, dt_preds, average='weighted')
+dt_acc = metrics.accuracy_score(y_test, dt_preds)
+dt_recall = metrics.recall_score(y_test, dt_preds, average='weighted')
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' , dt_f1)
+print('Test Accuracy:' , dt_acc)
+print('Test Recall:' , dt_recall)
+
+
+# In[213]:
+
+
+cm = confusion_matrix(y_test, dt_preds)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[214]:
+
+
+dt.tree_.node_count, dt.tree_.max_depth
+
+
+# In[215]:
+
+
+def measure_error(y_true, y_pred, label):
+    return pd.Series({'accuracy':accuracy_score(y_true, y_pred),
+                      'precision': precision_score(y_true, y_pred),
+                      'recall': recall_score(y_true, y_pred),
+                      'f1': f1_score(y_true, y_pred)},
+                      name=label)
+
+
+# In[216]:
+
+
+y_train_pred = dt.predict(X_train)
+y_test_pred = dt.predict(X_test)
+
+train_test_full_error = pd.concat([measure_error(y_train, y_train_pred, 'train'),
+                              measure_error(y_test, y_test_pred, 'test')],
+                              axis=1)
+
+train_test_full_error
+
+
+# ## SMOTE Decison Tree
+
+# In[217]:
+
+
+dt = DecisionTreeClassifier(random_state = 42)
+dt.fit(X_train_smote, y_train_smote)
+dt_preds = dt.predict(X_test)
+
+dt_f1 = metrics.f1_score(y_test, dt_preds, average='weighted')
+dt_acc = metrics.accuracy_score(y_test, dt_preds)
+dt_recall = metrics.recall_score(y_test, dt_preds, average='weighted')
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' , dt_f1)
+print('Test Accuracy:' , dt_acc)
+print('Test Recall:' , dt_recall)
+
+
+# In[218]:
+
+
+cm = confusion_matrix(y_test, dt_preds)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[219]:
+
+
+dt.tree_.node_count, dt.tree_.max_depth
+
+
+# In[220]:
+
+
+def measure_error(y_true, y_pred, label):
+    return pd.Series({'accuracy':accuracy_score(y_true, y_pred),
+                      'precision': precision_score(y_true, y_pred),
+                      'recall': recall_score(y_true, y_pred),
+                      'f1': f1_score(y_true, y_pred)},
+                      name=label)
+
+
+# In[221]:
+
+
+y_train_pred = dt.predict(X_train)
+y_test_pred = dt.predict(X_test)
+
+train_test_full_error = pd.concat([measure_error(y_train, y_train_pred, 'train'),
+                              measure_error(y_test, y_test_pred, 'test')],
+                              axis=1)
+
+train_test_full_error
+
+
+# ## Decision Tree Cross-Validation GridCV
+
+# In[222]:
+
+
+param_grid = {'max_depth':range(1, dt.tree_.max_depth+1, 2),
+              'max_features': range(1, len(dt.feature_importances_)+1)}
+
+GR = GridSearchCV(DecisionTreeClassifier(random_state=42),
+                  param_grid=param_grid,
+                  scoring='accuracy',
+                  n_jobs=-1)
+
+GR = GR.fit(X_train_smote, y_train_smote)
+
+print("Best Parameters:",LR.best_params_)
+print("Train Score:",LR.best_score_)
+print("Test Score:",LR.score(X_test,y_test))
+print("Best Estimator", LR.best_estimator_)
+
+
+# In[223]:
+
+
+GR.best_estimator_.tree_.node_count, GR.best_estimator_.tree_.max_depth
+
+
+# In[310]:
+
+
+GSCV_DT_preds = GR.best_estimator_.predict(X_test)
+
+print('Test Accuracy:' , accuracy_score(y_test, GSCV_DT_preds))
+print('Test F1:' , f1_score(y_test, GSCV_DT_preds, average='weighted'))
+print('Test Recall:' , recall_score(y_test, GSCV_DT_preds, average='weighted'))
+
+
+# In[224]:
+
+
+y_train_pred_gr = GR.predict(X_train)
+y_test_pred_gr = GR.predict(X_test)
+
+train_test_gr_error = pd.concat([measure_error(y_train, y_train_pred_gr, 'train'),
+                                 measure_error(y_test, y_test_pred_gr, 'test')],
+                                axis=1)
+train_test_gr_error
+
+
+# In[225]:
+
+
+scores_dt = cross_val_score(dt, X_train_smote, y_train_smote, cv = cv_method, n_jobs=-1, scoring="accuracy")
+
+print(f"Scores(Cross validate) for Decision Tree model:\n{scores_dt}")
+print(f"CrossValMeans: {round(scores_dt.mean(), 3)}")
+print(f"CrossValStandard Deviation: {round(scores_dt.std(), 3)}")
+
+
+# # Random Forest
+
+# In[234]:
+
+
+X = newdf.drop('TenYearCHD', axis = 1)
+y = newdf['TenYearCHD']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 42)
+
+RC = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators = 100)
+RC = RC.fit(X_train, y_train)
+RC_predict = RC.predict(X_test)
+
+RC_f1 = metrics.f1_score(y_test, RC_predict, average='weighted')
+RC_acc = metrics.accuracy_score(y_test, RC_predict)
+RC_recall = metrics.recall_score(y_test, RC_predict, average='weighted')
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' , RC_f1)
+print('Test Accuracy:' , RC_acc)
+print('Test Recall:' , RC_recall)
+
+
+# In[235]:
+
+
+cm = confusion_matrix(y_test, RC_predict)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[243]:
+
+
+def measure_error(y_true, y_pred, label):
+    return pd.Series({'accuracy':accuracy_score(y_true, y_pred),
+                      'precision': precision_score(y_true, y_pred),
+                      'recall': recall_score(y_true, y_pred),
+                      'f1': f1_score(y_true, y_pred)},
+                      name=label)
+
+
+# In[244]:
+
+
+y_train_pred = RC.predict(X_train)
+y_test_pred = RC.predict(X_test)
+
+train_test_full_error = pd.concat([measure_error(y_train, y_train_pred, 'train'),
+                              measure_error(y_test, y_test_pred, 'test')],
+                              axis=1)
+
+train_test_full_error
+
+
+# ## SMOTE Random Forest
+
+# In[285]:
+
+
+RC = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators = 100)
+RC = RC.fit(X_train_smote, y_train_smote)
+RC_predict = RC.predict(X_test)
+
+RC_f1 = metrics.f1_score(y_test, RC_predict, average='weighted')
+RC_acc = metrics.accuracy_score(y_test, RC_predict)
+RC_recall = metrics.recall_score(y_test, RC_predict, average='weighted')
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' , RC_f1)
+print('Test Accuracy:' , RC_acc)
+print('Test Recall:' , RC_recall)
+
+
+# In[286]:
+
+
+cm = confusion_matrix(y_test, RC_predict)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[287]:
+
+
+def measure_error(y_true, y_pred, label):
+    return pd.Series({'accuracy':accuracy_score(y_true, y_pred),
+                      'precision': precision_score(y_true, y_pred),
+                      'recall': recall_score(y_true, y_pred),
+                      'f1': f1_score(y_true, y_pred)},
+                      name=label)
+
+
+# In[288]:
+
+
+y_train_pred = RC.predict(X_train)
+y_test_pred = RC.predict(X_test)
+
+train_test_full_error = pd.concat([measure_error(y_train, y_train_pred, 'train'),
+                              measure_error(y_test, y_test_pred, 'test')],
+                              axis=1)
+
+train_test_full_error
+
+
+# ## RF GridCV
+
+# In[311]:
+
+
+param_grid = {'n_estimators': [75, 100, 125],
+    'max_features': [.25, .35, 'auto'],
+    'max_depth' : [9, 11, 15],
+    'criterion' : ['entropy']}
+
+GR_RF = GridSearchCV(estimator= RC, 
+                           param_grid=param_grid, 
+                           cv=cv_method, 
+                           scoring='accuracy', 
+                           verbose=1, 
+                           n_jobs=-1
+                          )
+
+GR_RF = GR_RF.fit(X_train_smote, y_train_smote)
+
+
+# In[312]:
+
+
+print(GR_RF.best_params_)
+print(GR_RF.best_estimator_)
+print(GR_RF.best_score_)
+
+
+# In[313]:
+
+
+y_train_pred_gr = GR_RF.predict(X_train)
+y_test_pred_gr = GR_RF.predict(X_test)
+
+train_test_gr_error = pd.concat([measure_error(y_train, y_train_pred_gr, 'train'),
+                                 measure_error(y_test, y_test_pred_gr, 'test')],
+                                axis=1)
+train_test_gr_error
+
+
+# In[314]:
+
+
+scores_rf = cross_val_score(dt, X_train_smote, y_train_smote, cv = cv_method, n_jobs=-1, scoring="accuracy")
+
+print(f"Scores(Cross validate) for Decision Tree model:\n{scores_dt}")
+print(f"CrossValMeans: {round(scores_dt.mean(), 3)}")
+print(f"CrossValStandard Deviation: {round(scores_dt.std(), 3)}")
+
+
+# In[315]:
+
+
+GSCV_RF_preds = GR_RF.best_estimator_.predict(X_test)
+
+print('Test Accuracy:' , accuracy_score(y_test, GSCV_RF_preds))
+print('Test F1:' , f1_score(y_test, GSCV_DT_preds, average='weighted'))
+print('Test Recall:' , recall_score(y_test, GSCV_DT_preds, average='weighted'))
+
+
+# # Gradient Boost
+
+# In[293]:
+
+
+error_list = list()
+
+tree_list = [15, 25, 50, 100, 200, 400]
+for n_trees in tree_list:
+    
+    GBC = GradientBoostingClassifier(n_estimators=n_trees, random_state=42)
+
+    print(f'Fitting model with {n_trees} trees')
+    GBC.fit(X_train.values, y_train.values)
+    y_pred = GBC.predict(X_test)
+
+    error = 1.0 - accuracy_score(y_test, y_pred)
+    
+    error_list.append(pd.Series({'n_trees': n_trees, 'error': error}))
+
+error_df = pd.concat(error_list, axis=1).T.set_index('n_trees')
+
+error_df
+
+
+# In[294]:
+
+
+GBC = GradientBoostingClassifier(n_estimators=n_trees, random_state=42)
+GBC = GBC.fit(X_train, y_train)
+GBC_predict = GBC.predict(X_test)
+
+GBC_f1 = metrics.f1_score(y_test, GBC_predict, average='weighted')
+GBC_acc = metrics.accuracy_score(y_test, GBC_predict)
+GBC_recall = metrics.recall_score(y_test, GBC_predict, average='weighted')
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' ,GBC_f1)
+print('Test Accuracy:' , GBC_acc)
+print('Test Recall:' , GBC_recall)
+
+
+# In[295]:
+
+
+param_grid = {'n_estimators': tree_list,
+              'learning_rate': [0.1, 0.01, 0.001, 0.0001],
+              'subsample': [1.0, 0.5],
+              'max_features': [1, 2, 3, 4]}
+
+GV_GBC = GridSearchCV(GradientBoostingClassifier(random_state=42), 
+                      param_grid=param_grid, 
+                      scoring='accuracy',
+                      n_jobs=-1)
+
+GV_GBC = GV_GBC.fit(X_train, y_train)
+
+
+# In[296]:
+
+
+print(GV_GBC.best_params_)
+print(GV_GBC.best_estimator_)
+print(GV_GBC.best_score_)
+
+
+# In[297]:
+
+
+cm = confusion_matrix(y_test, y_pred)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[298]:
+
+
+y_train_pred_gr = GV_GBC.predict(X_train)
+y_test_pred_gr = GV_GBC.predict(X_test)
+
+train_test_gr_error = pd.concat([measure_error(y_train, y_train_pred_gr, 'train'),
+                                 measure_error(y_test, y_test_pred_gr, 'test')],
+                                axis=1)
+train_test_gr_error
+
+
+# ## SMOTE Gradient Boost
+
+# In[275]:
+
+
+GBC = GradientBoostingClassifier(n_estimators=n_trees, random_state=42)
+GBC = GBC.fit(X_train_smote, y_train_smote)
+GBC_predict = GBC.predict(X_test)
+
+GBC_f1 = metrics.f1_score(y_test, GBC_predict, average='weighted')
+GBC_acc = metrics.accuracy_score(y_test, GBC_predict)
+GBC_recall = metrics.recall_score(y_test, GBC_predict, average='weighted')
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' ,GBC_f1)
+print('Test Accuracy:' , GBC_acc)
+print('Test Recall:' , GBC_recall)
+
+
+# In[276]:
+
+
+cm = confusion_matrix(y_test, RC_predict)
+print("Confusion Matrix:")
+print(cm)
+
+
+# In[277]:
+
+
+def measure_error(y_true, y_pred, label):
+    return pd.Series({'accuracy':accuracy_score(y_true, y_pred),
+                      'precision': precision_score(y_true, y_pred),
+                      'recall': recall_score(y_true, y_pred),
+                      'f1': f1_score(y_true, y_pred)},
+                      name=label)
+
+
+# In[278]:
+
+
+y_train_pred = GBC.predict(X_train)
+y_test_pred = GBC.predict(X_test)
+
+train_test_full_error = pd.concat([measure_error(y_train, y_train_pred, 'train'),
+                              measure_error(y_test, y_test_pred, 'test')],
+                              axis=1)
+
+train_test_full_error
+
+
+# # SMOTE AdaBoost
+
+# In[317]:
+
+
+ABC = AdaBoostClassifier (base_estimator=DecisionTreeClassifier(), learning_rate=0.1, n_estimators = 200)
+ABC = ABC.fit(X_train_smote, y_train_smote)
+ABC_predict = ABC.predict(X_test)
+
+ABC_f1 = metrics.f1_score(y_test, ABC_predict, average='weighted')
+ABC_acc = metrics.accuracy_score(y_test, ABC_predict)
+ABC_recall = metrics.recall_score(y_test, ABC_predict, average='weighted')
+
+# Checking Accuracy, F1, and Recall scores
+print('Test F1:' ,ABC_f1)
+print('Test Accuracy:' ,ABC_acc)
+print('Test Recall:' , ABC_recall)
+
+
+# # Compare Models
+
+# In[333]:
+
+
+acc_results = pd.DataFrame({
+                        'Model': ['SMOTE SVM', 'GridSearchCV SMOTE SVM','Logistic Regression', 'SMOTE Logistic Regression',
+                                  'GridSearchCV SMOTE Logistic Regression', 
+                                  'Decision Tree','SMOTE Decision Tree', 'GridSearchCV SMOTE Decision Tree',
+                                  'Random Forest','SMOTE Random Forest','GridSearchCV SMOTE Random Forest',
+                                   'Gradient Boost','SMOTE Gradient Boost', 'SMOTE ADABoost'
+                                  
+                                 ],
+                        'Accuracy Score': [accuracy_score(y_test, svm_preds), accuracy_score(y_test, GSCV_svm_preds),
+                                           logreg_acc, accuracy_score(y_test, logreg_preds),
+                                     accuracy_score(y_test, GSCV_LR_preds),
+                                     dt_acc, accuracy_score(y_test, dt_preds),accuracy_score(y_test, GSCV_DT_preds),
+                                           RC_acc, accuracy_score(y_test, RC_predict), accuracy_score(y_test, GSCV_RF_preds),
+                                           GBC_acc, accuracy_score(y_test, GBC_predict), accuracy_score(y_test, ABC_predict)
+                                    ]
+                        })
+acc_result_df = acc_results.sort_values(by="Accuracy Score", ascending=False)
+acc_result_df = acc_result_df.set_index("Accuracy Score")
+acc_result_d
