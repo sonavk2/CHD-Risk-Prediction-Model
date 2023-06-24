@@ -1191,18 +1191,18 @@ print('Test Recall:' , ABC_recall)
 
 
 acc_results = pd.DataFrame({
-                        'Model': ['SMOTE SVM', 'GridSearchCV SMOTE SVM','Logistic Regression', 'SMOTE Logistic Regression',
+                        'Model': ['SVM', 'SMOTE SVM', 'GridSearchCV SMOTE SVM','Logistic Regression', 'SMOTE Logistic Regression',
                                   'GridSearchCV SMOTE Logistic Regression', 
                                   'Decision Tree','SMOTE Decision Tree', 'GridSearchCV SMOTE Decision Tree',
                                   'Random Forest','SMOTE Random Forest','GridSearchCV SMOTE Random Forest',
                                    'Gradient Boost','SMOTE Gradient Boost', 'SMOTE ADABoost'
                                   
                                  ],
-                        'Accuracy Score': [accuracy_score(y_test, svm_preds), accuracy_score(y_test, GSCV_svm_preds),
-                                           logreg_acc, accuracy_score(y_test, logreg_preds),
+                        'Accuracy Score': [svm_acc, accuracy_score(y_test, svm_preds), accuracy_score(y_test, GSCV_svm_preds),
+                                           logreg_acc, accuracy_score(y_test, lr_preds),
                                      accuracy_score(y_test, GSCV_LR_preds),
                                      dt_acc, accuracy_score(y_test, dt_preds),accuracy_score(y_test, GSCV_DT_preds),
-                                           RC_acc, accuracy_score(y_test, RC_predict), accuracy_score(y_test, GSCV_RF_preds),
+                                           RC_acc, accuracy_score(y_test, RC_smote), accuracy_score(y_test, GSCV_RF_preds),
                                            GBC_acc, accuracy_score(y_test, GBC_predict), accuracy_score(y_test, ABC_predict)
                                     ]
                         })
