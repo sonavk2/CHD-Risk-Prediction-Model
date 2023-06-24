@@ -31,7 +31,6 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import confusion_matrix
 from sklearn.kernel_approximation import Nystroem
-from sklearn.svm import SVC
 from sklearn.linear_model import SGDClassifier
 from sklearn import metrics
 from sklearn.model_selection import StratifiedShuffleSplit
