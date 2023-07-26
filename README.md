@@ -9,6 +9,11 @@ This project required **Python** and the following Python libraries installed:
 - [matplotlib](http://matplotlib.org/)
 - [scikit-learn](http://scikit-learn.org/stable/)
 
+## Objective
+The main objective of this analysis is to develop classifier models focused on prediction and compare them to see which model is best. The analysis aims to provide accurate predictions of the 10-year risk of future coronary heart disease(CHD) for patients
+based on their demographic, behavioral and medical attributes. The business or stakeholders of this data, such as healthcare providers or researchers, can benefit from the analysis by identifying individuals at high risk of CHD and implementing preventive 
+measures.
+
 ## Contents
 1. Data Cleaning and preprocessing steps
 2. EDA
@@ -19,11 +24,6 @@ This project required **Python** and the following Python libraries installed:
 - Random Forest
 - Gradient Boost
 - AdaBoost
-
-## Objective
-The main objective of this analysis is to develop classifier models focused on prediction and compare them to see which model is best. The analysis aims to provide accurate predictions of the 10-year risk of future coronary heart disease(CHD) for patients
-based on their demographic, behavioral and medical attributes. The business or stakeholders of this data, such as healthcare providers or researchers, can benefit from the analysis by identifying individuals at high risk of CHD and implementing preventive 
-measures.
 
 ## Data
 The chosen dataset is from Kaggle(https://www.kaggle.com/datasets/mamta1999/cardiovascular-risk-data), which includes information on over 4,000 patients and 15 attributes representing potential risk factors for CHD.
