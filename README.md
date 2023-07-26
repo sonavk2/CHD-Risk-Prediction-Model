@@ -18,6 +18,7 @@ measures.
 The chosen dataset is from Kaggle(https://www.kaggle.com/datasets/mamta1999/cardiovascular-risk-data), which includes information on over 4,000 patients and 15 attributes representing potential risk factors for CHD.
 
 **Features**
+
 1.Demographic:
 - Sex: male or female ("M" or "F")
 - Age: Age of the patient (Continuous - Although the recorded ages have been truncated to whole numbers, the concept of age is continuous)
