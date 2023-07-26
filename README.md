@@ -9,6 +9,17 @@ This project required **Python** and the following Python libraries installed:
 - [matplotlib](http://matplotlib.org/)
 - [scikit-learn](http://scikit-learn.org/stable/)
 
+## Contents
+1. Data Cleaning and preprocessing steps
+2. EDA
+3. Models Trained and Evaluated:
+- SVM
+- Logistic Regression
+- Decision Trees
+- Random Forest
+- Gradient Boost
+- AdaBoost
+
 ## Objective
 The main objective of this analysis is to develop classifier models focused on prediction and compare them to see which model is best. The analysis aims to provide accurate predictions of the 10-year risk of future coronary heart disease(CHD) for patients
 based on their demographic, behavioral and medical attributes. The business or stakeholders of this data, such as healthcare providers or researchers, can benefit from the analysis by identifying individuals at high risk of CHD and implementing preventive 
@@ -19,7 +30,7 @@ The chosen dataset is from Kaggle(https://www.kaggle.com/datasets/mamta1999/card
 
 **Features**
 
-1.Demographic:
+1. Demographic:
 - Sex: male or female ("M" or "F")
 - Age: Age of the patient (Continuous - Although the recorded ages have been truncated to whole numbers, the concept of age is continuous)
 - Education: The level of education of the patient (categorical values - 1,2,3,4)
@@ -43,15 +54,5 @@ The chosen dataset is from Kaggle(https://www.kaggle.com/datasets/mamta1999/card
 - Glucose: glucose level (Continuous)
 
 **Target**
-10-year risk of coronary heart disease CHD(binary: “1”, means “Yes”, “0” means “No”)
 
-## Contents
-1. Data Cleaning and preprocessing steps
-2. EDA
-3. Models Trained and Evaluated:
-- SVM
-- Logistic Regression
-- Decision Trees
-- Random Forest
-- Gradient Boost
-- AdaBoost
+10-year risk of coronary heart disease CHD(binary: “1”, means “Yes”, “0” means “No”)
