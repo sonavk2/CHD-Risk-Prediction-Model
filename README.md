@@ -26,9 +26,9 @@ measures.
 CHD-Risk-Prediction-Model/
 │
 ├── data_cardiovascular_risk.csv   # Dataset file
-├── main.py                        # Entry point for the project
-├── preprocess.py                  # Data loading and preprocessing functions
-├── train_models.py                # Functions for training various models
+├── main.py                        # Entry 
+├── preprocess.py                  # Data loading and preprocessing 
+├── train_models.py                # Functions for training models
 ├── evaluate_models.py             # Model evaluation functions
 ├── requirements.txt               # Python dependencies
 ├── model.pkl                      # Saved model file
